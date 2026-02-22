@@ -3,7 +3,7 @@ name: Build and publish image
 on:
   push:
     branches:
-      - main
+      - trunk
   workflow_dispatch:
 
 permissions:
