@@ -76,6 +76,7 @@ podman run --rm -it \
 Use the included script to mount a workspace directory into `/project`.
 
 By default, `tapir.sh` keeps `pi` auth/settings/sessions in user storage on the host (`~/.local/share/tapir/pi-agent`) and mounts it into the container.
+It also keeps Bun cache in host user storage (`~/.local/share/tapir/bun`) and mounts it as `BUN_INSTALL` inside the container.
 
 In an interactive terminal (and only when `CI` is not set), you can omit the workspace argument:
 
@@ -129,6 +130,9 @@ Behavior summary:
   - override host path with `TAPIR_AGENT_DIR`
   - override container path with `TAPIR_CONTAINER_AGENT_DIR`
   - use `+no-user-home` to force project-local `<workspace>/.pi/agent`
+- default Bun cache path: host `~/.local/share/tapir/bun` mounted into container and exported as `BUN_INSTALL` (`/opt/bun/.bun`)
+  - override host path with `TAPIR_BUN_DIR`
+  - override container path with `TAPIR_CONTAINER_BUN_DIR`
 - always runs as host UID/GID (`--userns=keep-id` + `--user`) and mounts workspace as `/project:z`
 
 #### Install as user command
@@ -189,6 +193,8 @@ TAPIR_PULL_POLICY=never ./tapir.sh +version=latest "$PWD"
 - `TAPIR_INSTALL_PATH` (install path used by `+install`)
 - `TAPIR_AGENT_DIR` (host path for persistent `pi` state; default: `$HOME/.local/share/tapir/pi-agent`)
 - `TAPIR_CONTAINER_AGENT_DIR` (container path used for `PI_CODING_AGENT_DIR`; default: `/tapir/.pi/agent`)
+- `TAPIR_BUN_DIR` (host path for persistent Bun cache/install data; default: `$HOME/.local/share/tapir/bun`)
+- `TAPIR_CONTAINER_BUN_DIR` (container path used for `BUN_INSTALL`; default: `/opt/bun/.bun`)
 
 Build-pin overrides used for local (`+version=this`) builds:
 
