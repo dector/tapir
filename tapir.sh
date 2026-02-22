@@ -16,6 +16,7 @@ workspace_dir=$1
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 image_name=${TAPIR_IMAGE:-bun-pi}
 containerfile="${script_dir}/container/Containerfile"
+entrypoint_file="${script_dir}/container/entrypoint.sh"
 
 if [[ ! -e "$workspace_dir" ]]; then
   printf 'Error: path does not exist: %s\n' "$workspace_dir" >&2
@@ -34,7 +35,25 @@ if [[ ! -f "$containerfile" ]]; then
   exit 1
 fi
 
-podman build -f "$containerfile" -t "$image_name" "$script_dir"
+if [[ ! -f "$entrypoint_file" ]]; then
+  printf 'Error: entrypoint file not found: %s\n' "$entrypoint_file" >&2
+  exit 1
+fi
+
+build_hash=$(
+  sha256sum "$containerfile" "$entrypoint_file" \
+    | sha256sum \
+    | cut -d ' ' -f1
+)
+
+image_hash=''
+if podman image exists "$image_name"; then
+  image_hash=$(podman image inspect --format '{{ with .Config.Labels }}{{ index . "tapir.build.hash" }}{{ end }}' "$image_name")
+fi
+
+if [[ "$image_hash" != "$build_hash" ]]; then
+  podman build --label "tapir.build.hash=$build_hash" -f "$containerfile" -t "$image_name" "$script_dir"
+fi
 
 run_args=(
   run --rm -it

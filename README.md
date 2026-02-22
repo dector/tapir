@@ -61,7 +61,7 @@ Use the included script to mount a workspace directory into `/project`:
 ./tapir.sh "$PWD"
 ```
 
-The script rebuilds the `bun-pi` image before each run so it stays up to date.
+The script rebuilds the `bun-pi` image only when `container/Containerfile` or `container/entrypoint.sh` changes.
 By default, it runs `pi` in the container.
 In an interactive terminal, the container entrypoint starts or reattaches a `tmux` session named `pi`.
 It runs as your host UID/GID (`--userns=keep-id` + `--user`) and mounts the workspace as `/project:Z`.
