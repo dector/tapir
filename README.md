@@ -6,6 +6,7 @@ This project provides a multi-stage container definition at `container/Container
 - `git` installed in runtime (default `debian:bookworm-slim`)
 - `tmux` installed in runtime (default `debian:bookworm-slim`)
 - `pi` installed globally as a pinned package version (default `@mariozechner/pi-coding-agent@0.54.0`)
+- familiar CLI tools preinstalled for agent workflows: `rg` (ripgrep), `fd`, and `jq`
 - bun and global packages stored in `/usr/local/bun` so tools run with `--userns=keep-id`
 - a configurable default working directory
 - an entrypoint that launches `pi` inside a tmux session when running interactively
@@ -112,4 +113,7 @@ podman run --rm bun-pi bun --version
 podman run --rm bun-pi git --version
 podman run --rm bun-pi tmux -V
 podman run --rm bun-pi pi --version
+podman run --rm bun-pi rg --version
+podman run --rm bun-pi fd --version
+podman run --rm bun-pi jq --version
 ```
