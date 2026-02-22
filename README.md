@@ -1,4 +1,4 @@
-> [!warning] NON-STABLE
+> [!WARNING] NON-STABLE
 > I use it but I might break this shit in process.
 > Be careful.
 
@@ -114,6 +114,8 @@ Examples:
 Behavior summary:
 
 - `+version=this`: local dev mode, rebuilds when `container/Containerfile`, `container/entrypoint.sh`, or build args change (hash label)
+  - source root discovery priority: `TAPIR_SOURCE_DIR` → current working directory → workspace argument → script directory
+  - set `TAPIR_SOURCE_DIR` explicitly when needed (for example, globally installed `tapir`)
 - remote versions: pulls according to pull policy (below)
 - always runs as host UID/GID (`--userns=keep-id` + `--user`) and mounts workspace as `/project:z`
 
@@ -128,6 +130,7 @@ Ensure `~/.local/bin` is in your `PATH`, then call:
 ```bash
 tapir +version=latest
 tapir +version=this
+TAPIR_SOURCE_DIR="$HOME/src/tapir" tapir +version=this
 ```
 
 #### Pull/cache policy for remote images
@@ -148,10 +151,11 @@ TAPIR_PULL_POLICY=missing ./tapir.sh +version=abc1234 "$PWD"
 TAPIR_PULL_POLICY=never ./tapir.sh +version=latest "$PWD"
 ```
 
-#### Image naming overrides
+#### Image naming and source overrides
 
 - `TAPIR_REMOTE_IMAGE` (defaults to inferred `ghcr.io/<owner>/<repo>` if possible)
 - `TAPIR_LOCAL_IMAGE` (default: `tapir:this`)
+- `TAPIR_SOURCE_DIR` (explicit source repo root used by `+version=this`)
 
 Build-pin overrides used for local (`+version=this`) builds:
 
