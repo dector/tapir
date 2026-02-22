@@ -1,12 +1,14 @@
-# `tapir.sh` reference
+# `tapir` command reference
 
-This document describes the implemented behavior of `tapir.sh`.
+This document describes the implemented behavior of the `tapir` launcher (`tapir.sh` in this repository, or installed as `tapir`).
 
 ## Usage
 
 ```text
-tapir.sh [+install] [+tmux] [+no-user-home] [+version=<tag|sha|this>] [workspace-directory] [container-command [args...]]
+tapir [+install] [+tmux] [+no-user-home] [+version=<tag|sha|this>] [workspace-directory] [container-command [args...]]
 ```
+
+If not installed yet, use `./tapir.sh` with the same arguments.
 
 Flags:
 
@@ -158,14 +160,13 @@ Default mode (without `+no-user-home`):
 ## Useful examples
 
 ```bash
-./tapir.sh +install
-./tapir.sh +version=latest "$PWD"
-./tapir.sh +version=abc1234 "$PWD" tapir-version
-./tapir.sh +version=this "$PWD" tapir-version
-./tapir.sh +tmux +version=this "$PWD"
-./tapir.sh +no-user-home "$PWD"
+tapir +version=latest "$PWD"
+tapir +version=abc1234 "$PWD" tapir-version
+tapir +version=this "$PWD" tapir-version
+tapir +tmux +version=this "$PWD"
+tapir +no-user-home "$PWD"
 
-TAPIR_PULL_POLICY=always ./tapir.sh +version=latest "$PWD"
-TAPIR_PULL_POLICY=missing ./tapir.sh +version=abc1234 "$PWD"
-TAPIR_PULL_POLICY=never ./tapir.sh +version=latest "$PWD"
+TAPIR_PULL_POLICY=always tapir +version=latest "$PWD"
+TAPIR_PULL_POLICY=missing tapir +version=abc1234 "$PWD"
+TAPIR_PULL_POLICY=never tapir +version=latest "$PWD"
 ```
