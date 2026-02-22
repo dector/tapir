@@ -2,16 +2,47 @@
 
 set -euo pipefail
 
+script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+script_dir="$(dirname "$script_path")"
+
 usage() {
-  printf 'Usage: %s [+tmux] [+version=<tag|sha|this>] [workspace-directory] [container-command [args...]]\n' "$(basename "$0")" >&2
+  printf 'Usage: %s [+install] [+tmux] [+version=<tag|sha|this>] [workspace-directory] [container-command [args...]]\n' "$(basename "$0")" >&2
+  printf '  +install installs this script to ~/.local/bin/tapir (or TAPIR_INSTALL_PATH).\n' >&2
   printf '  workspace-directory is optional only in interactive non-CI terminals.\n' >&2
 }
 
+install_self() {
+  local default_install_path install_target install_dir
+
+  default_install_path=''
+  if [[ -n "${HOME:-}" ]]; then
+    default_install_path="${HOME}/.local/bin/tapir"
+  fi
+
+  install_target=${TAPIR_INSTALL_PATH:-$default_install_path}
+  if [[ -z "$install_target" ]]; then
+    printf 'Error: cannot determine install target. Set HOME or TAPIR_INSTALL_PATH.\n' >&2
+    exit 1
+  fi
+
+  install_dir=$(dirname "$install_target")
+  mkdir -p "$install_dir"
+
+  install -Dm755 "$script_path" "$install_target"
+
+  printf 'Installed tapir to: %s\n' "$install_target"
+  printf 'Ensure this directory is in PATH: %s\n' "$install_dir"
+}
+
 use_tmux=0
+install_requested=0
 requested_version=${TAPIR_VERSION:-latest}
 
 while [[ "${1:-}" == +* ]]; do
   case "$1" in
+    +install)
+      install_requested=1
+      ;;
     +tmux)
       use_tmux=1
       ;;
@@ -33,10 +64,23 @@ while [[ "${1:-}" == +* ]]; do
   shift
 done
 
+if [[ $install_requested -eq 1 ]]; then
+  if [[ $# -gt 0 ]]; then
+    printf 'Error: +install does not accept workspace or command arguments.\n' >&2
+    usage
+    exit 1
+  fi
+
+  install_self
+  exit 0
+fi
+
 interactive_user_terminal=0
 if [[ -t 0 && -t 1 && -z "${CI:-}" ]]; then
   interactive_user_terminal=1
 fi
+
+current_pwd=$(pwd)
 
 workspace_dir=''
 if [[ $# -ge 1 ]]; then
@@ -44,7 +88,6 @@ if [[ $# -ge 1 ]]; then
   shift
 elif [[ $interactive_user_terminal -eq 1 ]]; then
   workspace_dir='.'
-  current_pwd=$(pwd)
   printf 'Using workdir: %s y/N: ' "$current_pwd"
 
   confirmation=''
@@ -61,9 +104,42 @@ else
   exit 1
 fi
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-containerfile="${script_dir}/container/Containerfile"
-entrypoint_file="${script_dir}/container/entrypoint.sh"
+has_container_sources() {
+  local source_dir=$1
+  [[ -f "${source_dir}/container/Containerfile" && -f "${source_dir}/container/entrypoint.sh" ]]
+}
+
+resolve_source_dir() {
+  local workspace_dir_abs=$1
+  local resolved_source_dir=''
+
+  if [[ -n "${TAPIR_SOURCE_DIR:-}" ]]; then
+    if [[ ! -d "$TAPIR_SOURCE_DIR" ]]; then
+      printf 'Error: TAPIR_SOURCE_DIR is not a directory: %s\n' "$TAPIR_SOURCE_DIR" >&2
+      exit 1
+    fi
+
+    resolved_source_dir=$(cd "$TAPIR_SOURCE_DIR" && pwd)
+    if ! has_container_sources "$resolved_source_dir"; then
+      printf 'Error: TAPIR_SOURCE_DIR does not contain container sources: %s\n' "$resolved_source_dir" >&2
+      exit 1
+    fi
+
+    printf '%s\n' "$resolved_source_dir"
+    return 0
+  fi
+
+  for candidate in "$current_pwd" "$workspace_dir_abs" "$script_dir"; do
+    if has_container_sources "$candidate"; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done
+
+  printf 'Error: could not locate container sources (expected container/Containerfile and container/entrypoint.sh).\n' >&2
+  printf 'Set TAPIR_SOURCE_DIR to the tapir repository root.\n' >&2
+  exit 1
+}
 
 infer_remote_image() {
   local origin user_name
@@ -166,7 +242,12 @@ if [[ ! -d "$workspace_dir" ]]; then
   exit 1
 fi
 
+workspace_dir_abs=$(cd "$workspace_dir" && pwd)
+
 if [[ "$image_mode" == "local" ]]; then
+  source_dir=$(resolve_source_dir "$workspace_dir_abs")
+  containerfile="${source_dir}/container/Containerfile"
+  entrypoint_file="${source_dir}/container/entrypoint.sh"
   if [[ ! -f "$containerfile" ]]; then
     printf 'Error: container file not found: %s\n' "$containerfile" >&2
     exit 1
@@ -202,7 +283,7 @@ if [[ "$image_mode" == "local" ]]; then
       --build-arg "APP_DIR=$container_dir" \
       -f "$containerfile" \
       -t "$image_name" \
-      "$script_dir"
+      "$source_dir"
   fi
 fi
 

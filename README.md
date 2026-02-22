@@ -96,6 +96,8 @@ In non-interactive terminals and CI, the workspace argument is still required:
 
 Flags:
 
+- `+install` installs the script to `~/.local/bin/tapir` (or `TAPIR_INSTALL_PATH`) and exits
+  - `+install` does not accept workspace or command arguments
 - `+tmux` enables tmux wrapping (`session: pi`)
 - `+version=<tag|sha|this>` chooses image source/version
   - `+version=latest` (default)
@@ -105,6 +107,7 @@ Flags:
 Examples:
 
 ```bash
+./tapir.sh +install
 ./tapir.sh +version=latest "$PWD"
 ./tapir.sh +version=abc1234 "$PWD" pi --version
 ./tapir.sh +version=this "$PWD"
@@ -119,18 +122,24 @@ Behavior summary:
 - remote versions: pulls according to pull policy (below)
 - always runs as host UID/GID (`--userns=keep-id` + `--user`) and mounts workspace as `/project:z`
 
-#### Install as system-wide user command
+#### Install as user command
 
 ```bash
-install -Dm755 ./tapir.sh "$HOME/.local/bin/tapir"
+./tapir.sh +install
 ```
 
-Ensure `~/.local/bin` is in your `PATH`, then call:
+Custom install target (optional):
 
 ```bash
-tapir +version=latest
-tapir +version=this
-TAPIR_SOURCE_DIR="$HOME/src/tapir" tapir +version=this
+TAPIR_INSTALL_PATH="$HOME/.local/bin/tapir" ./tapir.sh +install
+```
+
+Ensure `~/.local/bin` is in your `PATH`, then verify:
+
+```bash
+tapir +version=latest "$PWD" pi --version
+tapir +version=this "$PWD" pi --version
+TAPIR_SOURCE_DIR="$HOME/src/tapir" tapir +version=this "$PWD" pi --version
 ```
 
 #### Pull/cache policy for remote images
@@ -151,11 +160,12 @@ TAPIR_PULL_POLICY=missing ./tapir.sh +version=abc1234 "$PWD"
 TAPIR_PULL_POLICY=never ./tapir.sh +version=latest "$PWD"
 ```
 
-#### Image naming and source overrides
+#### Image naming, source, and install overrides
 
 - `TAPIR_REMOTE_IMAGE` (defaults to inferred `ghcr.io/<owner>/<repo>` if possible)
 - `TAPIR_LOCAL_IMAGE` (default: `tapir:this`)
 - `TAPIR_SOURCE_DIR` (explicit source repo root used by `+version=this`)
+- `TAPIR_INSTALL_PATH` (install path used by `+install`)
 
 Build-pin overrides used for local (`+version=this`) builds:
 
