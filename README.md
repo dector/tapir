@@ -1,4 +1,4 @@
-> [!WARNING] NON-STABLE
+> [!WARNING]
 > I use it but I might break this shit in process.
 > Be careful.
 
