@@ -366,6 +366,7 @@ run_args=(
 )
 
 container_bun_dir=${TAPIR_CONTAINER_BUN_DIR:-/opt/bun/.bun}
+container_bun_cache_dir="${container_bun_dir}/install/cache"
 if [[ -n "${HOME:-}" ]]; then
   host_bun_dir=${TAPIR_BUN_DIR:-${HOME}/.local/share/tapir/bun}
 
@@ -374,13 +375,17 @@ if [[ -n "${HOME:-}" ]]; then
     exit 1
   fi
 
-  mkdir -p "$host_bun_dir"
+  mkdir -p "$host_bun_dir/install/cache"
   run_args+=(
     -v "${host_bun_dir}:${container_bun_dir}:z"
     -e "BUN_INSTALL=${container_bun_dir}"
+    -e "BUN_INSTALL_CACHE_DIR=${container_bun_cache_dir}"
   )
 else
-  run_args+=( -e "BUN_INSTALL=${container_bun_dir}" )
+  run_args+=(
+    -e "BUN_INSTALL=${container_bun_dir}"
+    -e "BUN_INSTALL_CACHE_DIR=${container_bun_cache_dir}"
+  )
 fi
 
 if [[ $use_user_home -eq 1 ]]; then
