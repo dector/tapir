@@ -1,0 +1,7 @@
+# Keep build context minimal: only files required by container/Containerfile
+**
+
+!container/
+!container/Containerfile
+!container/entrypoint.sh
+!.dockerignore

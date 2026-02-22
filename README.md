@@ -19,6 +19,8 @@ Default working directory inside the container is `/project`.
 podman build -f container/Containerfile -t tapir .
 ```
 
+Build context is minimized via `.dockerignore` so only `container/Containerfile` and `container/entrypoint.sh` are sent to the builder.
+
 ### Configure pinned versions at build time
 
 Defaults are pinned, but overridable with build args:
