@@ -11,7 +11,7 @@ This project provides a multi-stage container definition at `container/Container
 - `tmux` installed in runtime (default `debian:bookworm-slim`)
 - `pi` installed globally as a pinned package version (default `@mariozechner/pi-coding-agent@0.54.0`)
 - familiar CLI tools preinstalled for agent workflows: `rg` (ripgrep), `fd`, and `jq`
-- bun runtime install path set to `/opt/bun/.bun` and install cache path set to `/opt/bun/.bun/install/cache` (both writable), while bundled bun globals remain in `/usr/local/bun`
+- bun runtime install path set to `/opt/bun/.bun`, install cache path set to `/opt/bun/.bun/install/cache`, and runtime transpiler cache path set to `/opt/bun/.bun/install/cache/@t@` (all writable), while bundled bun globals remain in `/usr/local/bun`
 - builder stage runs `pi --help` once to prewarm bun cache, and that cache is copied into `/opt/bun/.bun/install/cache`
 - a configurable default working directory
 - an entrypoint that runs `pi` directly by default, with optional tmux session support
@@ -76,7 +76,7 @@ podman run --rm -it \
 Use the included script to mount a workspace directory into `/project`.
 
 By default, `tapir.sh` keeps `pi` auth/settings/sessions in user storage on the host (`~/.local/share/tapir/pi-agent`) and mounts it into the container.
-It also keeps Bun cache in host user storage (`~/.local/share/tapir/bun`) and mounts it inside the container as `BUN_INSTALL` (`/opt/bun/.bun`) with `BUN_INSTALL_CACHE_DIR` at `/opt/bun/.bun/install/cache`.
+It also keeps Bun cache in host user storage (`~/.local/share/tapir/bun`) and mounts it inside the container as `BUN_INSTALL` (`/opt/bun/.bun`), sets `BUN_INSTALL_CACHE_DIR` to `/opt/bun/.bun/install/cache`, and sets `BUN_RUNTIME_TRANSPILER_CACHE_PATH` to `/opt/bun/.bun/install/cache/@t@` (where Bun stores `.pile` files).
 
 In an interactive terminal (and only when `CI` is not set), you can omit the workspace argument:
 
@@ -127,13 +127,14 @@ Behavior summary:
   - set `TAPIR_SOURCE_DIR` explicitly when needed (for example, globally installed `tapir`)
 - remote versions: pulls according to pull policy (below)
 - default state path: host `~/.local/share/tapir/pi-agent` mounted into container and exported as `PI_CODING_AGENT_DIR`
-  - override host path with `TAPIR_AGENT_DIR`
-  - override container path with `TAPIR_CONTAINER_AGENT_DIR`
+  - override host path with `TAPIR_AGENT_DIR` (relative paths are resolved under `$HOME`)
+  - override container path with `TAPIR_CONTAINER_AGENT_DIR` (must be absolute)
   - use `+no-user-home` to force project-local `<workspace>/.pi/agent`
 - default Bun cache path: host `~/.local/share/tapir/bun` mounted into container and exported as `BUN_INSTALL` (`/opt/bun/.bun`)
   - `BUN_INSTALL_CACHE_DIR` is set to `<BUN_INSTALL>/install/cache` (default: `/opt/bun/.bun/install/cache`)
-  - override host path with `TAPIR_BUN_DIR`
-  - override container path with `TAPIR_CONTAINER_BUN_DIR`
+  - `BUN_RUNTIME_TRANSPILER_CACHE_PATH` is set to `<BUN_INSTALL>/install/cache/@t@` (stores Bun runtime `.pile` cache files)
+  - override host path with `TAPIR_BUN_DIR` (relative paths are resolved under `$HOME`)
+  - override container path with `TAPIR_CONTAINER_BUN_DIR` (must be absolute)
 - always runs as host UID/GID (`--userns=keep-id` + `--user`) and mounts workspace as `/project:z`
 
 #### Install as user command
@@ -192,10 +193,10 @@ TAPIR_PULL_POLICY=never ./tapir.sh +version=latest "$PWD"
 - `TAPIR_LOCAL_IMAGE` (default: `tapir:this`)
 - `TAPIR_SOURCE_DIR` (explicit source repo root used by `+version=this`)
 - `TAPIR_INSTALL_PATH` (install path used by `+install`)
-- `TAPIR_AGENT_DIR` (host path for persistent `pi` state; default: `$HOME/.local/share/tapir/pi-agent`)
-- `TAPIR_CONTAINER_AGENT_DIR` (container path used for `PI_CODING_AGENT_DIR`; default: `/tapir/.pi/agent`)
-- `TAPIR_BUN_DIR` (host path for persistent Bun cache/install data; default: `$HOME/.local/share/tapir/bun`)
-- `TAPIR_CONTAINER_BUN_DIR` (container path used for `BUN_INSTALL`; default: `/opt/bun/.bun`; `BUN_INSTALL_CACHE_DIR` becomes `<this>/install/cache`)
+- `TAPIR_AGENT_DIR` (host path for persistent `pi` state; default: `$HOME/.local/share/tapir/pi-agent`; relative paths resolve under `$HOME`)
+- `TAPIR_CONTAINER_AGENT_DIR` (container path used for `PI_CODING_AGENT_DIR`; default: `/tapir/.pi/agent`; must be absolute)
+- `TAPIR_BUN_DIR` (host path for persistent Bun cache/install data; default: `$HOME/.local/share/tapir/bun`; relative paths resolve under `$HOME`)
+- `TAPIR_CONTAINER_BUN_DIR` (container path used for `BUN_INSTALL`; default: `/opt/bun/.bun`; must be absolute; `BUN_INSTALL_CACHE_DIR` becomes `<this>/install/cache`; `BUN_RUNTIME_TRANSPILER_CACHE_PATH` becomes `<this>/install/cache/@t@`)
 
 Build-pin overrides used for local (`+version=this`) builds:
 

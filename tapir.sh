@@ -366,25 +366,36 @@ run_args=(
 )
 
 container_bun_dir=${TAPIR_CONTAINER_BUN_DIR:-/opt/bun/.bun}
+if [[ "$container_bun_dir" != /* ]]; then
+  printf 'Error: TAPIR_CONTAINER_BUN_DIR must be an absolute container path, got: %s\n' "$container_bun_dir" >&2
+  exit 1
+fi
+
 container_bun_cache_dir="${container_bun_dir}/install/cache"
+container_bun_runtime_cache_dir="${container_bun_cache_dir}/@t@"
 if [[ -n "${HOME:-}" ]]; then
   host_bun_dir=${TAPIR_BUN_DIR:-${HOME}/.local/share/tapir/bun}
+  if [[ "$host_bun_dir" != /* ]]; then
+    host_bun_dir="${HOME}/${host_bun_dir}"
+  fi
 
   if [[ -e "$host_bun_dir" && ! -d "$host_bun_dir" ]]; then
     printf 'Error: TAPIR_BUN_DIR is not a directory: %s\n' "$host_bun_dir" >&2
     exit 1
   fi
 
-  mkdir -p "$host_bun_dir/install/cache"
+  mkdir -p "$host_bun_dir/install/cache/@t@"
   run_args+=(
     -v "${host_bun_dir}:${container_bun_dir}:z"
     -e "BUN_INSTALL=${container_bun_dir}"
     -e "BUN_INSTALL_CACHE_DIR=${container_bun_cache_dir}"
+    -e "BUN_RUNTIME_TRANSPILER_CACHE_PATH=${container_bun_runtime_cache_dir}"
   )
 else
   run_args+=(
     -e "BUN_INSTALL=${container_bun_dir}"
     -e "BUN_INSTALL_CACHE_DIR=${container_bun_cache_dir}"
+    -e "BUN_RUNTIME_TRANSPILER_CACHE_PATH=${container_bun_runtime_cache_dir}"
   )
 fi
 
@@ -396,7 +407,15 @@ if [[ $use_user_home -eq 1 ]]; then
   fi
 
   host_agent_dir=${TAPIR_AGENT_DIR:-${HOME}/.local/share/tapir/pi-agent}
+  if [[ "$host_agent_dir" != /* ]]; then
+    host_agent_dir="${HOME}/${host_agent_dir}"
+  fi
+
   container_agent_dir=${TAPIR_CONTAINER_AGENT_DIR:-/tapir/.pi/agent}
+  if [[ "$container_agent_dir" != /* ]]; then
+    printf 'Error: TAPIR_CONTAINER_AGENT_DIR must be an absolute container path, got: %s\n' "$container_agent_dir" >&2
+    exit 1
+  fi
 
   if [[ -e "$host_agent_dir" && ! -d "$host_agent_dir" ]]; then
     printf 'Error: TAPIR_AGENT_DIR is not a directory: %s\n' "$host_agent_dir" >&2

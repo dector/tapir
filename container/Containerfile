@@ -14,6 +14,7 @@ ARG APP_DIR=/project
 
 ENV BUN_INSTALL="/opt/bun/.bun"
 ENV BUN_INSTALL_CACHE_DIR="/opt/bun/.bun/install/cache"
+ENV BUN_RUNTIME_TRANSPILER_CACHE_PATH="/opt/bun/.bun/install/cache/@t@"
 ENV TAPIR_BUN_BUNDLED_DIR="/usr/local/bun"
 ENV PATH="${TAPIR_BUN_BUNDLED_DIR}/bin:/usr/local/bin:${PATH}"
 
@@ -26,7 +27,7 @@ COPY --from=builder /root/.bun /usr/local/bun
 COPY --from=builder /root/.bun/install/cache /opt/bun/.bun/install/cache
 COPY container/entrypoint.sh /usr/local/bin/container-entrypoint.sh
 
-RUN mkdir -p "${BUN_INSTALL_CACHE_DIR}" \
+RUN mkdir -p "${BUN_INSTALL_CACHE_DIR}" "${BUN_RUNTIME_TRANSPILER_CACHE_PATH}" \
     && chmod -R 0777 /opt/bun \
     && ln -s /usr/local/bin/bun /usr/local/bin/node \
     && ln -s /usr/bin/fdfind /usr/local/bin/fd \
