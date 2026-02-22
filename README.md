@@ -9,10 +9,11 @@ This project provides a multi-stage container definition at `container/Container
 - `bun` installed in a builder stage (default `oven/bun:1.3.9`) and copied into a slim runtime
 - `git` installed in runtime (default `debian:bookworm-slim`)
 - `tmux` installed in runtime (default `debian:bookworm-slim`)
-- `pi` installed globally as a pinned package version (default `@mariozechner/pi-coding-agent@0.54.0`)
+- `pi` installed globally as a pinned package version (default `@mariozechner/pi-coding-agent@0.54.1`)
 - familiar CLI tools preinstalled for agent workflows: `rg` (ripgrep), `fd`, and `jq`
 - bun runtime install path set to `/opt/bun/.bun`, install cache path set to `/opt/bun/.bun/install/cache`, and runtime transpiler cache path set to `/opt/bun/.bun/install/cache/@t@` (all writable), while bundled bun globals remain in `/usr/local/bun`
 - builder stage runs `pi --help` once to prewarm bun cache, and that cache is copied into `/opt/bun/.bun/install/cache`
+- image build metadata is embedded (`commit`, `version`, `build date`) and available via `tapir-version`
 - a configurable default working directory
 - an entrypoint that runs `pi` directly by default, with optional tmux session support
 
@@ -32,15 +33,21 @@ Defaults are pinned, but overridable with build args:
 
 - `BUN_IMAGE` (default `docker.io/oven/bun:1.3.9`)
 - `RUNTIME_IMAGE` (default `docker.io/debian:bookworm-slim`)
-- `PI_VERSION` (default `0.54.0`)
+- `PI_VERSION` (default `0.54.1`)
 - `APP_DIR` (default `/project`)
+- `TAPIR_VCS_REF` (default `unknown`)
+- `TAPIR_BUILD_VERSION` (default `dev`)
+- `TAPIR_BUILD_DATE` (default `unknown`)
 
 ```bash
 podman build -f container/Containerfile \
   --build-arg BUN_IMAGE=docker.io/oven/bun:1.3.9 \
   --build-arg RUNTIME_IMAGE=docker.io/debian:bookworm-slim \
-  --build-arg PI_VERSION=0.54.0 \
+  --build-arg PI_VERSION=0.54.1 \
   --build-arg APP_DIR=/project \
+  --build-arg TAPIR_VCS_REF="$(git rev-parse HEAD)" \
+  --build-arg TAPIR_BUILD_VERSION="$(git rev-parse --short HEAD)" \
+  --build-arg TAPIR_BUILD_DATE="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   -t tapir .
 ```
 
@@ -69,6 +76,13 @@ podman run --rm -it \
   -w "${CONTAINER_DIR}" \
   tapir \
   pi
+```
+
+### Show embedded image commit/version
+
+```bash
+podman run --rm tapir tapir-version
+podman run --rm tapir sh -lc 'cat /usr/local/share/tapir/build-info'
 ```
 
 ### Helper script (`tapir.sh`)
@@ -114,15 +128,16 @@ Examples:
 ```bash
 ./tapir.sh +install
 ./tapir.sh +version=latest "$PWD"
-./tapir.sh +version=abc1234 "$PWD" pi --version
-./tapir.sh +version=this "$PWD"
+./tapir.sh +version=abc1234 "$PWD" tapir-version
+./tapir.sh +version=this "$PWD" tapir-version
 ./tapir.sh +tmux +version=this
 ./tapir.sh +no-user-home "$PWD"
 ```
 
 Behavior summary:
 
-- `+version=this`: local dev mode, rebuilds when `container/Containerfile`, `container/entrypoint.sh`, or build args change (hash label)
+- `+version=this`: local dev mode, rebuilds when `container/Containerfile`, `container/entrypoint.sh`, build args, or git commit (`HEAD`) change (hash label)
+  - local builds embed commit/version/date metadata for `tapir-version`
   - source root discovery priority: `TAPIR_SOURCE_DIR` → current working directory → workspace argument → script directory
   - set `TAPIR_SOURCE_DIR` explicitly when needed (for example, globally installed `tapir`)
 - remote versions: pulls according to pull policy (below)
@@ -164,9 +179,9 @@ TAPIR_INSTALL_PATH="$HOME/.local/bin/tapir" ./tapir.sh +install
 Ensure `~/.local/bin` is in your `PATH`, then verify:
 
 ```bash
-tapir +version=latest "$PWD" pi --version
-tapir +version=this "$PWD" pi --version
-TAPIR_SOURCE_DIR="$HOME/src/tapir" tapir +version=this "$PWD" pi --version
+tapir +version=latest "$PWD" tapir-version
+tapir +version=this "$PWD" tapir-version
+TAPIR_SOURCE_DIR="$HOME/src/tapir" tapir +version=this "$PWD" tapir-version
 ```
 
 #### Pull/cache policy for remote images
@@ -203,7 +218,7 @@ Build-pin overrides used for local (`+version=this`) builds:
 ```bash
 TAPIR_BUN_IMAGE=docker.io/oven/bun:1.3.9 \
 TAPIR_RUNTIME_IMAGE=docker.io/debian:bookworm-slim \
-TAPIR_PI_VERSION=0.54.0 \
+TAPIR_PI_VERSION=0.54.1 \
 TAPIR_APP_DIR=/project \
 ./tapir.sh +version=this "$PWD"
 ```
@@ -215,7 +230,7 @@ A workflow at `.github/workflows/publish-image.yml` builds and publishes the ima
 - `ghcr.io/<owner>/tapir:latest`
 - `ghcr.io/<owner>/tapir:<short-commit-sha>`
 
-It also sets OCI image labels (`org.opencontainers.image.*`) for traceability.
+It also sets OCI image labels (`org.opencontainers.image.*`) for traceability and passes build args so `tapir-version` shows commit/version/date inside the container.
 
 ## Pass API keys or environment variables
 
@@ -236,6 +251,7 @@ podman run --rm tapir bun --version
 podman run --rm tapir git --version
 podman run --rm tapir tmux -V
 podman run --rm tapir pi --version
+podman run --rm tapir tapir-version
 podman run --rm tapir rg --version
 podman run --rm tapir fd --version
 podman run --rm tapir jq --version

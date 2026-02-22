@@ -49,6 +49,10 @@ jobs:
           tags: |
             ${{ steps.vars.outputs.image }}:latest
             ${{ steps.vars.outputs.image }}:${{ steps.vars.outputs.short_sha }}
+          build-args: |
+            TAPIR_VCS_REF=${{ github.sha }}
+            TAPIR_BUILD_VERSION=${{ steps.vars.outputs.short_sha }}
+            TAPIR_BUILD_DATE=${{ steps.vars.outputs.created }}
           labels: |
             org.opencontainers.image.title=${{ env.IMAGE_NAME }}
             org.opencontainers.image.description=Minimal Bun + pi container

@@ -174,7 +174,7 @@ fi
 
 bun_image=${TAPIR_BUN_IMAGE:-docker.io/oven/bun:1.3.9}
 runtime_image=${TAPIR_RUNTIME_IMAGE:-docker.io/debian:bookworm-slim}
-pi_version=${TAPIR_PI_VERSION:-0.54.0}
+pi_version=${TAPIR_PI_VERSION:-0.54.1}
 container_dir=${TAPIR_APP_DIR:-/project}
 
 cache_base=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}
@@ -263,6 +263,18 @@ if [[ "$image_mode" == "local" ]]; then
     exit 1
   fi
 
+  build_vcs_ref='unknown'
+  if command -v git >/dev/null 2>&1; then
+    build_vcs_ref=$(git -C "$source_dir" rev-parse HEAD 2>/dev/null || printf 'unknown')
+  fi
+
+  build_version='this'
+  if [[ "$build_vcs_ref" != "unknown" ]]; then
+    build_version="${build_vcs_ref:0:7}"
+  fi
+
+  build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+
   build_hash=$(
     {
       sha256sum "$containerfile" "$entrypoint_file"
@@ -270,7 +282,9 @@ if [[ "$image_mode" == "local" ]]; then
         "BUN_IMAGE=$bun_image" \
         "RUNTIME_IMAGE=$runtime_image" \
         "PI_VERSION=$pi_version" \
-        "APP_DIR=$container_dir"
+        "APP_DIR=$container_dir" \
+        "TAPIR_VCS_REF=$build_vcs_ref" \
+        "TAPIR_BUILD_VERSION=$build_version"
     } | sha256sum | cut -d ' ' -f1
   )
 
@@ -286,6 +300,9 @@ if [[ "$image_mode" == "local" ]]; then
       --build-arg "RUNTIME_IMAGE=$runtime_image" \
       --build-arg "PI_VERSION=$pi_version" \
       --build-arg "APP_DIR=$container_dir" \
+      --build-arg "TAPIR_VCS_REF=$build_vcs_ref" \
+      --build-arg "TAPIR_BUILD_VERSION=$build_version" \
+      --build-arg "TAPIR_BUILD_DATE=$build_date" \
       -f "$containerfile" \
       -t "$image_name" \
       "$source_dir"
