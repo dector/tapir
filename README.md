@@ -74,6 +74,8 @@ podman run --rm -it \
 
 Use the included script to mount a workspace directory into `/project`.
 
+By default, `tapir.sh` keeps `pi` auth/settings/sessions in user storage on the host (`~/.local/share/tapir/pi-agent`) and mounts it into the container.
+
 In an interactive terminal (and only when `CI` is not set), you can omit the workspace argument:
 
 ```bash
@@ -99,6 +101,7 @@ Flags:
 - `+install` installs the script to `~/.local/bin/tapir` (or `TAPIR_INSTALL_PATH`) and exits
   - `+install` does not accept workspace or command arguments
 - `+tmux` enables tmux wrapping (`session: pi`)
+- `+no-user-home` keeps legacy project-local state at `<workspace>/.pi/agent`
 - `+version=<tag|sha|this>` chooses image source/version
   - `+version=latest` (default)
   - `+version=<short-sha-or-tag>` for pinned remote image
@@ -112,6 +115,7 @@ Examples:
 ./tapir.sh +version=abc1234 "$PWD" pi --version
 ./tapir.sh +version=this "$PWD"
 ./tapir.sh +tmux +version=this
+./tapir.sh +no-user-home "$PWD"
 ```
 
 Behavior summary:
@@ -120,6 +124,10 @@ Behavior summary:
   - source root discovery priority: `TAPIR_SOURCE_DIR` → current working directory → workspace argument → script directory
   - set `TAPIR_SOURCE_DIR` explicitly when needed (for example, globally installed `tapir`)
 - remote versions: pulls according to pull policy (below)
+- default state path: host `~/.local/share/tapir/pi-agent` mounted into container and exported as `PI_CODING_AGENT_DIR`
+  - override host path with `TAPIR_AGENT_DIR`
+  - override container path with `TAPIR_CONTAINER_AGENT_DIR`
+  - use `+no-user-home` to force project-local `<workspace>/.pi/agent`
 - always runs as host UID/GID (`--userns=keep-id` + `--user`) and mounts workspace as `/project:z`
 
 #### Install as user command
@@ -166,6 +174,8 @@ TAPIR_PULL_POLICY=never ./tapir.sh +version=latest "$PWD"
 - `TAPIR_LOCAL_IMAGE` (default: `tapir:this`)
 - `TAPIR_SOURCE_DIR` (explicit source repo root used by `+version=this`)
 - `TAPIR_INSTALL_PATH` (install path used by `+install`)
+- `TAPIR_AGENT_DIR` (host path for persistent `pi` state; default: `$HOME/.local/share/tapir/pi-agent`)
+- `TAPIR_CONTAINER_AGENT_DIR` (container path used for `PI_CODING_AGENT_DIR`; default: `/tapir/.pi/agent`)
 
 Build-pin overrides used for local (`+version=this`) builds:
 

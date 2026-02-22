@@ -6,8 +6,9 @@ script_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SO
 script_dir="$(dirname "$script_path")"
 
 usage() {
-  printf 'Usage: %s [+install] [+tmux] [+version=<tag|sha|this>] [workspace-directory] [container-command [args...]]\n' "$(basename "$0")" >&2
+  printf 'Usage: %s [+install] [+tmux] [+no-user-home] [+version=<tag|sha|this>] [workspace-directory] [container-command [args...]]\n' "$(basename "$0")" >&2
   printf '  +install installs this script to ~/.local/bin/tapir (or TAPIR_INSTALL_PATH).\n' >&2
+  printf '  +no-user-home stores pi state in the workspace (.pi/agent) instead of user storage.\n' >&2
   printf '  workspace-directory is optional only in interactive non-CI terminals.\n' >&2
 }
 
@@ -36,6 +37,7 @@ install_self() {
 
 use_tmux=0
 install_requested=0
+use_user_home=1
 requested_version=${TAPIR_VERSION:-latest}
 
 while [[ "${1:-}" == +* ]]; do
@@ -53,6 +55,9 @@ while [[ "${1:-}" == +* ]]; do
         usage
         exit 1
       fi
+      ;;
+    +no-user-home)
+      use_user_home=0
       ;;
     *)
       printf 'Error: unknown option: %s\n' "$1" >&2
@@ -359,6 +364,30 @@ run_args=(
   -v "${workspace_dir}:${container_dir}:z"
   -w "$container_dir"
 )
+
+if [[ $use_user_home -eq 1 ]]; then
+  if [[ -z "${HOME:-}" ]]; then
+    printf 'Error: HOME is not set, cannot use user storage for pi state.\n' >&2
+    printf 'Run with +no-user-home or set HOME.\n' >&2
+    exit 1
+  fi
+
+  host_agent_dir=${TAPIR_AGENT_DIR:-${HOME}/.local/share/tapir/pi-agent}
+  container_agent_dir=${TAPIR_CONTAINER_AGENT_DIR:-/tapir/.pi/agent}
+
+  if [[ -e "$host_agent_dir" && ! -d "$host_agent_dir" ]]; then
+    printf 'Error: TAPIR_AGENT_DIR is not a directory: %s\n' "$host_agent_dir" >&2
+    exit 1
+  fi
+
+  mkdir -p "$host_agent_dir"
+  run_args+=(
+    -v "${host_agent_dir}:${container_agent_dir}:z"
+    -e "PI_CODING_AGENT_DIR=${container_agent_dir}"
+  )
+else
+  run_args+=( -e "PI_CODING_AGENT_DIR=${container_dir}/.pi/agent" )
+fi
 
 if [[ $use_tmux -eq 1 ]]; then
   run_args+=( -e TAPIR_TMUX=1 )
