@@ -6,7 +6,7 @@ FROM docker.io/debian:bookworm-slim AS runtime
 
 ARG APP_DIR=/project
 
-ENV BUN_INSTALL="/root/.bun"
+ENV BUN_INSTALL="/usr/local/bun"
 ENV PATH="${BUN_INSTALL}/bin:/usr/local/bin:${PATH}"
 
 RUN apt-get update \
@@ -14,11 +14,11 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /usr/local/bin/bun /usr/local/bin/bun
-COPY --from=builder /root/.bun /root/.bun
+COPY --from=builder /root/.bun /usr/local/bun
 COPY container/entrypoint.sh /usr/local/bin/container-entrypoint.sh
 
 RUN ln -s /usr/local/bin/bun /usr/local/bin/node \
-  && ln -s /root/.bun/install/global/node_modules/@mariozechner/pi-coding-agent/dist/cli.js /usr/local/bin/pi \
+  && ln -s /usr/local/bun/install/global/node_modules/@mariozechner/pi-coding-agent/dist/cli.js /usr/local/bin/pi \
   && chmod +x /usr/local/bin/container-entrypoint.sh
 
 WORKDIR ${APP_DIR}

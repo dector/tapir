@@ -6,6 +6,7 @@ This project provides a multi-stage container definition at `container/Container
 - `git` installed in runtime (`debian:bookworm-slim`)
 - `tmux` installed in runtime (`debian:bookworm-slim`)
 - `pi` installed globally (`@mariozechner/pi-coding-agent`)
+- bun and global packages stored in `/usr/local/bun` so tools run with `--userns=keep-id`
 - a configurable default working directory
 - an entrypoint that launches `pi` inside a tmux session when running interactively
 
@@ -60,8 +61,10 @@ Use the included script to mount a workspace directory into `/project`:
 ./tapir.sh "$PWD"
 ```
 
-By default, it opens `/bin/sh` in the container.
-It runs with `--userns=keep-id` and mounts the workspace as `/project:Z`.
+The script rebuilds the `bun-pi` image before each run so it stays up to date.
+By default, it runs `pi` in the container.
+In an interactive terminal, the container entrypoint starts or reattaches a `tmux` session named `pi`.
+It runs as your host UID/GID (`--userns=keep-id` + `--user`) and mounts the workspace as `/project:Z`.
 
 Pass an explicit container command when needed:
 
