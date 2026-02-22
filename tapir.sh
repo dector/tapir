@@ -96,6 +96,64 @@ runtime_image=${TAPIR_RUNTIME_IMAGE:-docker.io/debian:bookworm-slim}
 pi_version=${TAPIR_PI_VERSION:-0.54.0}
 container_dir=${TAPIR_APP_DIR:-/project}
 
+cache_base=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}
+pull_state_dir=${TAPIR_PULL_STATE_DIR:-${cache_base}/tapir/pulls}
+
+is_fresh_pull_stamp() {
+  local stamp_file=$1
+  local ttl_seconds=$2
+  local now_epoch last_epoch
+
+  if [[ ! -f "$stamp_file" ]]; then
+    return 1
+  fi
+
+  if ! IFS= read -r last_epoch < "$stamp_file"; then
+    return 1
+  fi
+
+  if [[ ! "$last_epoch" =~ ^[0-9]+$ ]]; then
+    return 1
+  fi
+
+  now_epoch=$(date +%s)
+  (( now_epoch - last_epoch < ttl_seconds ))
+}
+
+pull_with_stamp() {
+  local image_ref=$1
+  local stamp_file=$2
+  local lock_file=$3
+  local blocking=$4
+
+  mkdir -p "$pull_state_dir"
+
+  if command -v flock >/dev/null 2>&1; then
+    if [[ "$blocking" == "1" ]]; then
+      (
+        flock 9
+        podman pull "$image_ref"
+        date +%s > "$stamp_file"
+      ) 9>"$lock_file"
+      return
+    fi
+
+    (
+      flock -n 9 || exit 0
+      podman pull "$image_ref" >/dev/null 2>&1 && date +%s > "$stamp_file"
+    ) 9>"$lock_file" >/dev/null 2>&1 &
+    return
+  fi
+
+  if [[ "$blocking" == "1" ]]; then
+    podman pull "$image_ref"
+    date +%s > "$stamp_file"
+    return
+  fi
+
+  (podman pull "$image_ref" >/dev/null 2>&1 && date +%s > "$stamp_file") >/dev/null 2>&1 &
+}
+
 if [[ ! -e "$workspace_dir" ]]; then
   printf 'Error: path does not exist: %s\n' "$workspace_dir" >&2
   usage
@@ -146,6 +204,71 @@ if [[ "$image_mode" == "local" ]]; then
       -t "$image_name" \
       "$script_dir"
   fi
+fi
+
+if [[ "$image_mode" == "remote" ]]; then
+  configured_pull_policy=${TAPIR_PULL_POLICY:-auto}
+  pull_ttl_seconds=${TAPIR_PULL_TTL_SECONDS:-600}
+  pull_async=${TAPIR_PULL_ASYNC:-1}
+
+  case "$configured_pull_policy" in
+    auto)
+      if [[ "$requested_version" == "latest" ]]; then
+        pull_policy='ttl'
+      else
+        pull_policy='missing'
+      fi
+      ;;
+    ttl|missing|always|never)
+      pull_policy=$configured_pull_policy
+      ;;
+    *)
+      printf 'Error: invalid TAPIR_PULL_POLICY: %s (expected auto|ttl|missing|always|never).\n' "$configured_pull_policy" >&2
+      exit 1
+      ;;
+  esac
+
+  if [[ ! "$pull_ttl_seconds" =~ ^[0-9]+$ ]]; then
+    printf 'Error: TAPIR_PULL_TTL_SECONDS must be a non-negative integer, got: %s\n' "$pull_ttl_seconds" >&2
+    exit 1
+  fi
+
+  local_exists=0
+  if podman image exists "$image_name"; then
+    local_exists=1
+  fi
+
+  image_key=$(printf '%s' "$image_name" | sha256sum | cut -d ' ' -f1)
+  pull_stamp_file="${pull_state_dir}/${image_key}.stamp"
+  pull_lock_file="${pull_state_dir}/${image_key}.lock"
+
+  case "$pull_policy" in
+    never)
+      if [[ $local_exists -eq 0 ]]; then
+        printf 'Error: image not present locally and pulling is disabled: %s\n' "$image_name" >&2
+        exit 1
+      fi
+      ;;
+    missing)
+      if [[ $local_exists -eq 0 ]]; then
+        pull_with_stamp "$image_name" "$pull_stamp_file" "$pull_lock_file" 1
+      fi
+      ;;
+    always)
+      pull_with_stamp "$image_name" "$pull_stamp_file" "$pull_lock_file" 1
+      ;;
+    ttl)
+      if [[ $local_exists -eq 0 ]]; then
+        pull_with_stamp "$image_name" "$pull_stamp_file" "$pull_lock_file" 1
+      elif ! is_fresh_pull_stamp "$pull_stamp_file" "$pull_ttl_seconds"; then
+        if [[ "$pull_async" == "1" ]]; then
+          pull_with_stamp "$image_name" "$pull_stamp_file" "$pull_lock_file" 0
+        else
+          pull_with_stamp "$image_name" "$pull_stamp_file" "$pull_lock_file" 1
+        fi
+      fi
+      ;;
+  esac
 fi
 
 run_args=(
