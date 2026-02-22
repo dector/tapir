@@ -365,6 +365,24 @@ run_args=(
   -w "$container_dir"
 )
 
+container_bun_dir=${TAPIR_CONTAINER_BUN_DIR:-/opt/bun/.bun}
+if [[ -n "${HOME:-}" ]]; then
+  host_bun_dir=${TAPIR_BUN_DIR:-${HOME}/.local/share/tapir/bun}
+
+  if [[ -e "$host_bun_dir" && ! -d "$host_bun_dir" ]]; then
+    printf 'Error: TAPIR_BUN_DIR is not a directory: %s\n' "$host_bun_dir" >&2
+    exit 1
+  fi
+
+  mkdir -p "$host_bun_dir"
+  run_args+=(
+    -v "${host_bun_dir}:${container_bun_dir}:z"
+    -e "BUN_INSTALL=${container_bun_dir}"
+  )
+else
+  run_args+=( -e "BUN_INSTALL=${container_bun_dir}" )
+fi
+
 if [[ $use_user_home -eq 1 ]]; then
   if [[ -z "${HOME:-}" ]]; then
     printf 'Error: HOME is not set, cannot use user storage for pi state.\n' >&2
