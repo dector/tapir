@@ -1,8 +1,13 @@
-FROM docker.io/oven/bun:1 AS builder
+ARG BUN_IMAGE=docker.io/oven/bun:1.3.9
+ARG RUNTIME_IMAGE=docker.io/debian:bookworm-slim
+ARG PI_VERSION=0.54.0
 
-RUN bun add -g @mariozechner/pi-coding-agent
+FROM ${BUN_IMAGE} AS builder
+ARG PI_VERSION
 
-FROM docker.io/debian:bookworm-slim AS runtime
+RUN bun add -g "@mariozechner/pi-coding-agent@${PI_VERSION}"
+
+FROM ${RUNTIME_IMAGE} AS runtime
 
 ARG APP_DIR=/project
 

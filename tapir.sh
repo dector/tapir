@@ -18,6 +18,11 @@ image_name=${TAPIR_IMAGE:-bun-pi}
 containerfile="${script_dir}/container/Containerfile"
 entrypoint_file="${script_dir}/container/entrypoint.sh"
 
+bun_image=${TAPIR_BUN_IMAGE:-docker.io/oven/bun:1.3.9}
+runtime_image=${TAPIR_RUNTIME_IMAGE:-docker.io/debian:bookworm-slim}
+pi_version=${TAPIR_PI_VERSION:-0.54.0}
+container_dir=${TAPIR_APP_DIR:-/project}
+
 if [[ ! -e "$workspace_dir" ]]; then
   printf 'Error: path does not exist: %s\n' "$workspace_dir" >&2
   usage
@@ -41,9 +46,14 @@ if [[ ! -f "$entrypoint_file" ]]; then
 fi
 
 build_hash=$(
-  sha256sum "$containerfile" "$entrypoint_file" \
-    | sha256sum \
-    | cut -d ' ' -f1
+  {
+    sha256sum "$containerfile" "$entrypoint_file"
+    printf '%s\n' \
+      "BUN_IMAGE=$bun_image" \
+      "RUNTIME_IMAGE=$runtime_image" \
+      "PI_VERSION=$pi_version" \
+      "APP_DIR=$container_dir"
+  } | sha256sum | cut -d ' ' -f1
 )
 
 image_hash=''
@@ -52,15 +62,23 @@ if podman image exists "$image_name"; then
 fi
 
 if [[ "$image_hash" != "$build_hash" ]]; then
-  podman build --label "tapir.build.hash=$build_hash" -f "$containerfile" -t "$image_name" "$script_dir"
+  podman build \
+    --label "tapir.build.hash=$build_hash" \
+    --build-arg "BUN_IMAGE=$bun_image" \
+    --build-arg "RUNTIME_IMAGE=$runtime_image" \
+    --build-arg "PI_VERSION=$pi_version" \
+    --build-arg "APP_DIR=$container_dir" \
+    -f "$containerfile" \
+    -t "$image_name" \
+    "$script_dir"
 fi
 
 run_args=(
   run --rm -it
   --userns=keep-id
   --user "$(id -u):$(id -g)"
-  -v "${workspace_dir}:/project:Z"
-  -w /project
+  -v "${workspace_dir}:${container_dir}:Z"
+  -w "$container_dir"
   "$image_name"
 )
 
