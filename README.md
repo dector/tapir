@@ -70,7 +70,7 @@ podman run --rm -it \
   pi
 ```
 
-### Helper script
+### Helper script (`tapir.sh`)
 
 Use the included script to mount a workspace directory into `/project`.
 
@@ -94,37 +94,83 @@ In non-interactive terminals and CI, the workspace argument is still required:
 ./tapir.sh "$PWD"
 ```
 
-The script rebuilds the `tapir` image when `container/Containerfile`, `container/entrypoint.sh`, or configured build args change.
-By default, it runs `pi` in the container without tmux.
-Use `+tmux` to opt in to starting or reattaching a `tmux` session named `pi` in interactive terminals.
-It runs as your host UID/GID (`--userns=keep-id` + `--user`) and mounts the workspace as `/project:z` by default.
+Flags:
 
-Pass an explicit container command when needed:
+- `+tmux` enables tmux wrapping (`session: pi`)
+- `+version=<tag|sha|this>` chooses image source/version
+  - `+version=latest` (default)
+  - `+version=<short-sha-or-tag>` for pinned remote image
+  - `+version=this` to build and use local `container/Containerfile`
+
+Examples:
 
 ```bash
-./tapir.sh "$PWD" pi
-./tapir.sh "$PWD" bun --version
-./tapir.sh +tmux
-./tapir.sh +tmux "$PWD" pi
+./tapir.sh +version=latest "$PWD"
+./tapir.sh +version=abc1234 "$PWD" pi --version
+./tapir.sh +version=this "$PWD"
+./tapir.sh +tmux +version=this
 ```
 
-For direct `podman run`, set `-e TAPIR_TMUX=1` to enable tmux wrapping for `pi`.
+Behavior summary:
 
-You can override build pins used by `tapir.sh` via env vars:
+- `+version=this`: local dev mode, rebuilds when `container/Containerfile`, `container/entrypoint.sh`, or build args change (hash label)
+- remote versions: pulls according to pull policy (below)
+- always runs as host UID/GID (`--userns=keep-id` + `--user`) and mounts workspace as `/project:z`
+
+#### Install as system-wide user command
+
+```bash
+install -Dm755 ./tapir.sh "$HOME/.local/bin/tapir"
+```
+
+Ensure `~/.local/bin` is in your `PATH`, then call:
+
+```bash
+tapir +version=latest
+tapir +version=this
+```
+
+#### Pull/cache policy for remote images
+
+Env vars:
+
+- `TAPIR_PULL_POLICY=auto|ttl|missing|always|never` (default: `auto`)
+  - `auto` = `ttl` for `latest`, `missing` for pinned versions
+- `TAPIR_PULL_TTL_SECONDS` (default: `600`)
+- `TAPIR_PULL_ASYNC=1|0` (default: `1`, only relevant for stale `ttl` checks)
+- `TAPIR_PULL_STATE_DIR` (default: `${XDG_CACHE_HOME:-$HOME/.cache}/tapir/pulls`)
+
+Useful overrides:
+
+```bash
+TAPIR_PULL_POLICY=always ./tapir.sh +version=latest "$PWD"
+TAPIR_PULL_POLICY=missing ./tapir.sh +version=abc1234 "$PWD"
+TAPIR_PULL_POLICY=never ./tapir.sh +version=latest "$PWD"
+```
+
+#### Image naming overrides
+
+- `TAPIR_REMOTE_IMAGE` (defaults to inferred `ghcr.io/<owner>/<repo>` if possible)
+- `TAPIR_LOCAL_IMAGE` (default: `tapir:this`)
+
+Build-pin overrides used for local (`+version=this`) builds:
 
 ```bash
 TAPIR_BUN_IMAGE=docker.io/oven/bun:1.3.9 \
 TAPIR_RUNTIME_IMAGE=docker.io/debian:bookworm-slim \
 TAPIR_PI_VERSION=0.54.0 \
 TAPIR_APP_DIR=/project \
-./tapir.sh "$PWD"
+./tapir.sh +version=this "$PWD"
 ```
 
 ## CI publish (GitHub Actions)
 
 A workflow at `.github/workflows/publish-image.yml` builds and publishes the image to GHCR as:
 
+- `ghcr.io/<owner>/tapir:latest`
 - `ghcr.io/<owner>/tapir:<short-commit-sha>`
+
+It also sets OCI image labels (`org.opencontainers.image.*`) for traceability.
 
 ## Pass API keys or environment variables
 
