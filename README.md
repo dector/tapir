@@ -68,7 +68,23 @@ podman run --rm -it \
 
 ### Helper script
 
-Use the included script to mount a workspace directory into `/project`:
+Use the included script to mount a workspace directory into `/project`.
+
+In an interactive terminal (and only when `CI` is not set), you can omit the workspace argument:
+
+```bash
+./tapir.sh
+```
+
+You will be prompted:
+
+```text
+Using workdir: <pwd> y/N:
+```
+
+The script continues only if you type `y`. Any other input exits.
+
+In non-interactive terminals and CI, the workspace argument is still required:
 
 ```bash
 ./tapir.sh "$PWD"
@@ -84,7 +100,7 @@ Pass an explicit container command when needed:
 ```bash
 ./tapir.sh "$PWD" pi
 ./tapir.sh "$PWD" bun --version
-./tapir.sh +tmux "$PWD"
+./tapir.sh +tmux
 ./tapir.sh +tmux "$PWD" pi
 ```
 

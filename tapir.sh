@@ -3,7 +3,8 @@
 set -euo pipefail
 
 usage() {
-  printf 'Usage: %s [+tmux] <workspace-directory> [container-command [args...]]\n' "$(basename "$0")" >&2
+  printf 'Usage: %s [+tmux] [workspace-directory] [container-command [args...]]\n' "$(basename "$0")" >&2
+  printf '  workspace-directory is optional only in interactive non-CI terminals.\n' >&2
 }
 
 use_tmux=0
@@ -12,13 +13,33 @@ if [[ "${1:-}" == "+tmux" ]]; then
   shift
 fi
 
-if [[ $# -lt 1 ]]; then
+interactive_user_terminal=0
+if [[ -t 0 && -t 1 && -z "${CI:-}" ]]; then
+  interactive_user_terminal=1
+fi
+
+workspace_dir=''
+if [[ $# -ge 1 ]]; then
+  workspace_dir=$1
+elif [[ $interactive_user_terminal -eq 1 ]]; then
+  workspace_dir='.'
+  current_pwd=$(pwd)
+  printf 'Using workdir: %s y/N: ' "$current_pwd"
+
+  confirmation=''
+  if ! IFS= read -r confirmation; then
+    exit 1
+  fi
+
+  if [[ "$confirmation" != "y" ]]; then
+    exit 1
+  fi
+else
   printf 'Error: missing workspace directory path.\n' >&2
   usage
   exit 1
 fi
 
-workspace_dir=$1
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 image_name=${TAPIR_IMAGE:-tapir}
 containerfile="${script_dir}/container/Containerfile"
