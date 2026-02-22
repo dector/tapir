@@ -132,11 +132,23 @@ Behavior summary:
 
 #### Install as user command
 
+Option 1 (quick install from `trunk`):
+
 ```bash
+install -d "$HOME/.local/bin"
+curl -fsSL "https://raw.githubusercontent.com/dector/tapir/trunk/tapir.sh" -o "$HOME/.local/bin/tapir"
+chmod +x "$HOME/.local/bin/tapir"
+```
+
+Option 2 (clone + `+install`):
+
+```bash
+git clone --branch trunk https://github.com/dector/tapir.git
+cd tapir
 ./tapir.sh +install
 ```
 
-Custom install target (optional):
+Custom install target for `+install` (optional):
 
 ```bash
 TAPIR_INSTALL_PATH="$HOME/.local/bin/tapir" ./tapir.sh +install
