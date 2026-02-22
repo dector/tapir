@@ -14,7 +14,7 @@ fi
 
 workspace_dir=$1
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-image_name=${TAPIR_IMAGE:-bun-pi}
+image_name=${TAPIR_IMAGE:-tapir}
 containerfile="${script_dir}/container/Containerfile"
 entrypoint_file="${script_dir}/container/entrypoint.sh"
 
@@ -77,7 +77,7 @@ run_args=(
   run --rm -it
   --userns=keep-id
   --user "$(id -u):$(id -g)"
-  -v "${workspace_dir}:${container_dir}:Z"
+  -v "${workspace_dir}:${container_dir}:z"
   -w "$container_dir"
   "$image_name"
 )

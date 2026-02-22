@@ -16,7 +16,7 @@ This project provides a multi-stage container definition at `container/Container
 Default working directory inside the container is `/project`.
 
 ```bash
-podman build -f container/Containerfile -t bun-pi .
+podman build -f container/Containerfile -t tapir .
 ```
 
 ### Configure pinned versions at build time
@@ -34,7 +34,7 @@ podman build -f container/Containerfile \
   --build-arg RUNTIME_IMAGE=docker.io/debian:bookworm-slim \
   --build-arg PI_VERSION=0.54.0 \
   --build-arg APP_DIR=/project \
-  -t bun-pi .
+  -t tapir .
 ```
 
 ## Run
@@ -45,7 +45,7 @@ Mount your current project and start `pi` in the container workdir:
 podman run --rm -it \
   -v "$PWD":/project \
   -w /project \
-  bun-pi \
+  tapir \
   pi
 ```
 
@@ -58,9 +58,9 @@ HOST_DIR="$PWD"
 CONTAINER_DIR="/project"
 
 podman run --rm -it \
-  -v "${HOST_DIR}:${CONTAINER_DIR}:Z" \
+  -v "${HOST_DIR}:${CONTAINER_DIR}:z" \
   -w "${CONTAINER_DIR}" \
-  bun-pi \
+  tapir \
   pi
 ```
 
@@ -72,10 +72,10 @@ Use the included script to mount a workspace directory into `/project`:
 ./tapir.sh "$PWD"
 ```
 
-The script rebuilds the `bun-pi` image when `container/Containerfile`, `container/entrypoint.sh`, or configured build args change.
+The script rebuilds the `tapir` image when `container/Containerfile`, `container/entrypoint.sh`, or configured build args change.
 By default, it runs `pi` in the container.
 In an interactive terminal, the container entrypoint starts or reattaches a `tmux` session named `pi`.
-It runs as your host UID/GID (`--userns=keep-id` + `--user`) and mounts the workspace as `/project:Z` by default.
+It runs as your host UID/GID (`--userns=keep-id` + `--user`) and mounts the workspace as `/project:z` by default.
 
 Pass an explicit container command when needed:
 
@@ -94,6 +94,12 @@ TAPIR_APP_DIR=/project \
 ./tapir.sh "$PWD"
 ```
 
+## CI publish (GitHub Actions)
+
+A workflow at `.github/workflows/publish-image.yml` builds and publishes the image to GHCR as:
+
+- `ghcr.io/<owner>/tapir:<short-commit-sha>`
+
 ## Pass API keys or environment variables
 
 Example (OpenAI):
@@ -103,17 +109,17 @@ podman run --rm -it \
   -v "$PWD":/project \
   -w /project \
   -e OPENAI_API_KEY \
-  bun-pi pi
+  tapir pi
 ```
 
 ## Quick checks
 
 ```bash
-podman run --rm bun-pi bun --version
-podman run --rm bun-pi git --version
-podman run --rm bun-pi tmux -V
-podman run --rm bun-pi pi --version
-podman run --rm bun-pi rg --version
-podman run --rm bun-pi fd --version
-podman run --rm bun-pi jq --version
+podman run --rm tapir bun --version
+podman run --rm tapir git --version
+podman run --rm tapir tmux -V
+podman run --rm tapir pi --version
+podman run --rm tapir rg --version
+podman run --rm tapir fd --version
+podman run --rm tapir jq --version
 ```

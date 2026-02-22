@@ -16,8 +16,8 @@ Minimal Bun + `pi` container (`debian:bookworm-slim` runtime, multi-stage build 
 ## Validate
 
 ```bash
-podman build -f container/Containerfile -t bun-pi .
-podman run --rm bun-pi bun --version
-podman run --rm bun-pi git --version
-podman run --rm bun-pi pi --version
+podman build -f container/Containerfile -t tapir .
+podman run --rm tapir bun --version
+podman run --rm tapir git --version
+podman run --rm tapir pi --version
 ```
