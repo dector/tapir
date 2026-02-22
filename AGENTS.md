@@ -1,10 +1,10 @@
 # AGENTS.md
 
-Minimal Bun + `pi` container (`debian:bookworm-slim` runtime, multi-stage build).
+Minimal Bun + `pi` container (`debian:bookworm-slim` runtime, multi-stage build in `container/Containerfile`).
 
 ## Rules
 
-- Keep `Containerfile` multi-stage.
+- Keep `container/Containerfile` multi-stage.
 - Keep default command as `pi --help`.
 - If runtime/build behavior changes, update `README.md`.
 
@@ -16,7 +16,7 @@ Minimal Bun + `pi` container (`debian:bookworm-slim` runtime, multi-stage build)
 ## Validate
 
 ```bash
-podman build -f Containerfile -t bun-pi .
+podman build -f container/Containerfile -t bun-pi .
 podman run --rm bun-pi bun --version
 podman run --rm bun-pi git --version
 podman run --rm bun-pi pi --version

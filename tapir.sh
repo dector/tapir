@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-  printf 'Usage: %s <workspace-directory> [command [args...]]\n' "$(basename "$0")" >&2
+  printf 'Usage: %s <workspace-directory> [container-command [args...]]\n' "$(basename "$0")" >&2
 }
 
 if [[ $# -lt 1 ]]; then
@@ -26,13 +26,16 @@ if [[ ! -d "$workspace_dir" ]]; then
   exit 1
 fi
 
-container_cmd=(/bin/sh)
+run_args=(
+  run --rm -it
+  --userns=keep-id
+  -v "${workspace_dir}:/project:Z"
+  -w /project
+  bun-pi
+)
+
 if [[ $# -gt 1 ]]; then
-  container_cmd=("${@:2}")
+  exec podman "${run_args[@]}" "${@:2}"
 fi
 
-exec podman run --rm -it \
-  -v "${workspace_dir}:/project" \
-  -w /project \
-  bun-pi \
-  "${container_cmd[@]}"
+exec podman "${run_args[@]}" /bin/sh
