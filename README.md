@@ -1,4 +1,8 @@
-# Bun + pi.dev Container
+> [!warning] NON-STABLE
+> I use it but I might break this shit in process.
+> Be careful.
+
+# pi.dev Container
 
 This project provides a multi-stage container definition at `container/Containerfile` with:
 
