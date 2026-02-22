@@ -29,7 +29,7 @@ Make sure `~/.local/bin` is in your `PATH`.
 Run `pi` for your current project:
 
 ```bash
-tapir "$PWD"
+tapir
 ```
 
 ## Possible usages
