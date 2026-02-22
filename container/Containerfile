@@ -5,14 +5,16 @@ ARG PI_VERSION=0.54.0
 FROM ${BUN_IMAGE} AS builder
 ARG PI_VERSION
 
-RUN bun add -g "@mariozechner/pi-coding-agent@${PI_VERSION}"
+RUN bun add -g "@mariozechner/pi-coding-agent@${PI_VERSION}" \
+  && ( /root/.bun/bin/pi --help >/dev/null 2>&1 || true )
 
 FROM ${RUNTIME_IMAGE} AS runtime
 
 ARG APP_DIR=/project
 
-ENV BUN_INSTALL="/usr/local/bun"
-ENV PATH="${BUN_INSTALL}/bin:/usr/local/bin:${PATH}"
+ENV BUN_INSTALL="/opt/bun/.bun"
+ENV TAPIR_BUN_BUNDLED_DIR="/usr/local/bun"
+ENV PATH="${TAPIR_BUN_BUNDLED_DIR}/bin:/usr/local/bin:${PATH}"
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates git tmux ripgrep fd-find jq \
@@ -20,9 +22,12 @@ RUN apt-get update \
 
 COPY --from=builder /usr/local/bin/bun /usr/local/bin/bun
 COPY --from=builder /root/.bun /usr/local/bun
+COPY --from=builder /root/.bun/install/cache /opt/bun/.bun/install/cache
 COPY container/entrypoint.sh /usr/local/bin/container-entrypoint.sh
 
-RUN ln -s /usr/local/bin/bun /usr/local/bin/node \
+RUN mkdir -p "${BUN_INSTALL}" \
+  && chmod -R 0777 /opt/bun \
+  && ln -s /usr/local/bin/bun /usr/local/bin/node \
   && ln -s /usr/bin/fdfind /usr/local/bin/fd \
   && ln -s /usr/local/bun/install/global/node_modules/@mariozechner/pi-coding-agent/dist/cli.js /usr/local/bin/pi \
   && chmod +x /usr/local/bin/container-entrypoint.sh

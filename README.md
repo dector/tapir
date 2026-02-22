@@ -11,7 +11,8 @@ This project provides a multi-stage container definition at `container/Container
 - `tmux` installed in runtime (default `debian:bookworm-slim`)
 - `pi` installed globally as a pinned package version (default `@mariozechner/pi-coding-agent@0.54.0`)
 - familiar CLI tools preinstalled for agent workflows: `rg` (ripgrep), `fd`, and `jq`
-- bun and global packages stored in `/usr/local/bun` so tools run with `--userns=keep-id`
+- bun runtime cache/install path set to `/opt/bun/.bun` (writable), while bundled bun globals remain in `/usr/local/bun`
+- builder stage runs `pi --help` once to prewarm bun cache, and that cache is copied into `/opt/bun/.bun/install/cache`
 - a configurable default working directory
 - an entrypoint that runs `pi` directly by default, with optional tmux session support
 
