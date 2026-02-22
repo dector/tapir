@@ -9,7 +9,7 @@ This project provides a multi-stage container definition at `container/Container
 - familiar CLI tools preinstalled for agent workflows: `rg` (ripgrep), `fd`, and `jq`
 - bun and global packages stored in `/usr/local/bun` so tools run with `--userns=keep-id`
 - a configurable default working directory
-- an entrypoint that launches `pi` inside a tmux session when running interactively
+- an entrypoint that runs `pi` directly by default, with optional tmux session support
 
 ## Build (Podman)
 
@@ -75,8 +75,8 @@ Use the included script to mount a workspace directory into `/project`:
 ```
 
 The script rebuilds the `tapir` image when `container/Containerfile`, `container/entrypoint.sh`, or configured build args change.
-By default, it runs `pi` in the container.
-In an interactive terminal, the container entrypoint starts or reattaches a `tmux` session named `pi`.
+By default, it runs `pi` in the container without tmux.
+Use `+tmux` to opt in to starting or reattaching a `tmux` session named `pi` in interactive terminals.
 It runs as your host UID/GID (`--userns=keep-id` + `--user`) and mounts the workspace as `/project:z` by default.
 
 Pass an explicit container command when needed:
@@ -84,7 +84,11 @@ Pass an explicit container command when needed:
 ```bash
 ./tapir.sh "$PWD" pi
 ./tapir.sh "$PWD" bun --version
+./tapir.sh +tmux "$PWD"
+./tapir.sh +tmux "$PWD" pi
 ```
+
+For direct `podman run`, set `-e TAPIR_TMUX=1` to enable tmux wrapping for `pi`.
 
 You can override build pins used by `tapir.sh` via env vars:
 

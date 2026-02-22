@@ -7,7 +7,7 @@ if [ "$#" -eq 0 ]; then
 fi
 
 if [ "$1" = "pi" ]; then
-  if [ -t 0 ] && [ -t 1 ]; then
+  if [ "${TAPIR_TMUX:-0}" = "1" ] && [ -t 0 ] && [ -t 1 ]; then
     exec tmux new-session -A -s pi "$@"
   fi
 

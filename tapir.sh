@@ -3,8 +3,14 @@
 set -euo pipefail
 
 usage() {
-  printf 'Usage: %s <workspace-directory> [container-command [args...]]\n' "$(basename "$0")" >&2
+  printf 'Usage: %s [+tmux] <workspace-directory> [container-command [args...]]\n' "$(basename "$0")" >&2
 }
+
+use_tmux=0
+if [[ "${1:-}" == "+tmux" ]]; then
+  use_tmux=1
+  shift
+fi
 
 if [[ $# -lt 1 ]]; then
   printf 'Error: missing workspace directory path.\n' >&2
@@ -79,11 +85,14 @@ run_args=(
   --user "$(id -u):$(id -g)"
   -v "${workspace_dir}:${container_dir}:z"
   -w "$container_dir"
-  "$image_name"
 )
 
-if [[ $# -gt 1 ]]; then
-  exec podman "${run_args[@]}" "${@:2}"
+if [[ $use_tmux -eq 1 ]]; then
+  run_args+=( -e TAPIR_TMUX=1 )
 fi
 
-exec podman "${run_args[@]}" pi
+if [[ $# -gt 1 ]]; then
+  exec podman "${run_args[@]}" "$image_name" "${@:2}"
+fi
+
+exec podman "${run_args[@]}" "$image_name" pi
