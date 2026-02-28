@@ -174,7 +174,7 @@ fi
 
 bun_image=${TAPIR_BUN_IMAGE:-docker.io/oven/bun:1.3.9}
 runtime_image=${TAPIR_RUNTIME_IMAGE:-docker.io/debian:bookworm-slim}
-pi_version=${TAPIR_PI_VERSION:-0.55.1}
+pi_version=${TAPIR_PI_VERSION:-0.55.3}
 container_dir=${TAPIR_APP_DIR:-/project}
 
 cache_base=${XDG_CACHE_HOME:-${HOME:-/tmp}/.cache}
